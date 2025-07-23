@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MapMeUp - Informasi Rute & Lalu Lintas Indonesia</title> 
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 0;
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      background: #f0f4f8;
+      color: #2c3e50;
+      user-select: none;
+      position: relative;
+    }
+    #sidebar {
+      width: 360px;
+      background: #ffffff;
+      box-shadow: 0 0 15px rgb(0 0 0 / 0.1);
+      padding: 28px 30px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transition: width 0.3s ease;
+      border-radius: 0 12px 12px 0;
+      z-index: 1000;
+    }
+    #sidebar h2 {
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: #34495e;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      font-size: 1.4rem;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #34495e;
+      font-size: 0.95rem;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      border: 1.8px solid #bdc3c7;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+      outline-offset: 2px;
+      outline-color: transparent;
+    }
+    input:focus {
+      border-color: #2980b9;
+      outline-color: #2980b9;
+      box-shadow: 0 0 8px #3498dbaa;
+    }
+    button {
+      background-color: #2980b9;
+      border: none;
+      color: white;
+      padding: 14px 0;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      cursor: pointer;
+      letter-spacing: 1.05px;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background-color: #1c5980;
+    }
+    #message {
+      margin-top: 8px;
+      font-weight: 700;
+      min-height: 26px;
+      transition: color 0.3s ease, opacity 0.5s ease;
+      font-size: 1rem;
+      font-style: italic;
+      text-align: center;
+      color: #27ae60;
+      opacity: 1;
+    }
+    #message.fade-out {
+        opacity: 0;
+    }
+    #locationsList {
+      margin-top: 32px;
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .location-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background-color: #d6eaf8;
+      box-shadow: 0 3px 6px rgb(0 0 0 / 0.1);
+      transition: background-color 0.25s ease;
+    }
+    .location-item:hover {
+      background-color: #aed6f1;
+    }
+    .location-item span {
+      font-weight: 700;
+      color: #2c3e50;
+      font-size: 1rem;
+      user-select: text;
+      letter-spacing: 0.4px;
+    }
+    .location-item button {
+      background-color: #e74c3c;
+      border: none;
+      color: white;
+      padding: 6px 16px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.25s ease;
+      user-select: none;
+    }
+    .location-item button:hover {
+      background-color: #992d22;
+    }
+    #map {
+      flex-grow: 1;
+      height: 100vh;
+      border-radius: 0 12px 12px 0;
+      box-shadow: inset 0 0 12px rgb(0 0 0 / 0.1);
+      transition: all 0.3s ease;
+    }
+    .search-container {
+      margin-bottom: 25px;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 25px;
+    }
+    .search-container h2 {
+        margin-top: 0;
+    }
+    .search-input-group {
+        display: flex;
+        gap: 10px;
+    }
+    .search-input-group input {
+        flex-grow: 1;
+        margin-bottom: 0;
+    }
+    .search-input-group button {
+        flex-shrink: 0;
+        width: auto;
+        padding: 12px 20px;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    #map-footer-controls {
+        position: absolute;
+        bottom: 20px;
+        left: 380px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 18px 25px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        z-index: 1000;
+        max-width: calc(100% - 380px - 40px);
+        flex-wrap: wrap;
+    }
+    #map-footer-controls .transport-modes {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 0;
+    }
+    #map-footer-controls .transport-modes label {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0;
+        cursor: pointer;
+    }
+    #map-footer-controls .transport-modes input[type="radio"] {
+        margin-right: 8px;
+        width: auto;
+        margin-bottom: 0;
+        transform: scale(1.1);
+        cursor: pointer;
+    }
+    #map-footer-controls #routeInfo {
+        margin-top: 0;
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: #34495e;
+        flex-grow: 1;
+    }
+#map-footer-controls #routeInfo h3 {
+        font-weight: 700;
+        margin-bottom: 5px; /* Dikecilkan */
+        color: #34495e;
+        font-size: 1rem; /* Dikecilkan dari 1.15rem */
+    }
+    #map-footer-controls #routeInfo p {
+        margin-bottom: 3px; /* Dikecilkan */
+        font-weight: normal;
+        font-size: 0.85rem; /* Dikecilkan dari 0.98rem */
+        line-height: 1.3; /* Sedikit dikurangi jarak antar baris */
+    }
+    .location-coord-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 18px;
+    }
+    .location-coord-group label {
+        margin-bottom: 8px;
+    }
+    .location-coord-group input {
+        margin-bottom: 5px;
+    }
+    .location-coord-group .address-display {
+        font-size: 0.85rem;
+        color: #555;
+        font-style: italic;
+        min-height: 1.2em;
+        margin-top: -10px;
+        margin-bottom: 15px;
+    }
+
+    /* Tambahan CSS untuk indikator lalu lintas */
+    .traffic-low { color: #27ae60; }    /* Hijau */
+    .traffic-moderate { color: #f39c12; } /* Oranye */
+    .traffic-high { color: #e74c3c; }   /* Merah */
+    
+/* CSS untuk Tombol "Lokasi Saya" */
+    #myLocationButton {
+        background-color: #3872E7; /* Warna biru konsisten */
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 15px; /* Sesuaikan padding agar terlihat bagus */
+        cursor: pointer;
+        font-size: 1.1em; /* Ukuran ikon */
+        margin-left: 10px; /* Jarak dari tombol Cari */
+        transition: background-color 0.2s ease;
+        display: flex; /* Untuk menengahkan ikon */
+        align-items: center;
+        justify-content: center;
+    }
+    #myLocationButton:hover {
+        background-color: #2980b9;
+    }
+    #myLocationButton i {
+        margin: 0; /* Pastikan tidak ada margin tambahan dari ikon */
+    }
+
+    /* Sesuaikan jika tombol terlalu rapat di mobile */
+    @media (max-width: 768px) {
+        .search-input-group {
+            flex-wrap: wrap; /* Izinkan wrap jika terlalu sempit */
+        }
+        #myLocationButton {
+            margin-left: 0;
+            margin-top: 10px; /* Beri jarak dari atas jika wrap */
+            width: 100%; /* Lebarkan tombol di mobile */
+        }
+    }
+
+
+    /* --- CSS BARU UNTUK TOOLTIP NAMA --- */
+    .username-tooltip {
+      background-color: transparent;
+      border: none;
+      box-shadow: none;
+      font-weight: bold;
+      font-size: 14px;
+      color: #000000;
+      text-shadow: 1px 1px 2px #ffffff;
+    }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      #sidebar { width: 100%; height: auto; box-shadow: none; padding: 16px 20px; border-radius: 0; }
+      #map { height: 60vh; border-radius: 0; }
+      #map-footer-controls { 
+          position: relative; 
+          left: auto; 
+          right: auto; 
+          bottom: auto; 
+          margin: 20px;
+          border-radius: 12px;
+          max-width: calc(100% - 40px);
+          flex-direction: column; 
+          align-items: flex-start; 
+          gap: 15px; 
+          padding: 15px 20px; 
+      }
+      #map-footer-controls .transport-modes { flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
+      #map-footer-controls .transport-modes label { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <div class="search-container">
+      <h2>Cari Lokasi</h2>
+      <div class="search-input-group">
+        <input type="text" id="searchLocationInput" placeholder="Cari alamat atau tempat..." />
+        <button id="searchLocationButton">Cari</button>
+        <button id="myLocationButton" title="Lokasi Saya"><i class="fas fa-crosshairs"></i></button>
+      </div>
+    </div>
+
+    <h2>Tambah Lokasi</h2>
+    <form id="locationForm" autocomplete="off" spellcheck="false">
+      <label for="username">Username</label>
+      <input type="text" id="username" required placeholder="Masukkan username..." />
+      
+      <div class="location-coord-group">
+          <label for="latitude">Latitude</label>
+          <input type="number" id="latitude" step="any" required placeholder="Klik peta untuk isi otomatis" readonly /> <label for="longitude">Longitude</label>
+          <input type="number" id="longitude" step="any" required placeholder="Klik peta untuk isi otomatis" readonly /> <label for="locationNameInput">Nama Lokasi (opsional):</label>
+          <input type="text" id="locationNameInput" placeholder="Misal: Kantor Polban" /> 
+          
+          <label for="fullAddressDisplay">Alamat Lengkap:</label>
+          <span class="address-display" id="fullAddressDisplay"></span> </div>
+      
+      <button type="submit">Tambah Lokasi</button>
+    </form>
+    <div id="message"></div>
+
+    <h2>Daftar Lokasi</h2>
+    <div id="locationsList"></div>
+  </div>
+
+  <div id="map"></div>
+  <div id="map-footer-controls"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+  <script>
+    
+    // Inisialisasi map dan tile layer
+    // Set view awal untuk mencakup Bandung dan Jakarta
+    const map = L.map('map').setView([-6.5, 107.5], 9); // Zoom out sedikit untuk melihat area lebih luas
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+    }).addTo(map);
+
+    // Inisialisasi Marker Cluster Group
+    const markerClusterGroup = L.markerClusterGroup();
+    map.addLayer(markerClusterGroup);
+
+    
+
+    // --- DEFINISI IKON BARU ---
+    const iconProps = {
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png'
+    };
+
+    const malikIcon = L.icon({
+        ...iconProps,
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    });
+
+    const zidanIcon = L.icon({
+        ...iconProps,
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    });
+    const fauziIcon = L.icon({
+        ...iconProps,
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+    });
+    const adryanIcon = L.icon({
+        ...iconProps,
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+    });
+
+    const defaultIcon = L.icon({
+        ...iconProps,
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    });
+
+    const messageEl = document.getElementById('message');
+    const form = document.getElementById('locationForm');
+    const locationsListEl = document.getElementById('locationsList');
+    const mapFooterControlsEl = document.getElementById('map-footer-controls');
+    const clickedAddressEl = document.getElementById('fullAddressDisplay'); // <-- Perubahan ID
+    const locationNameInput = document.getElementById('locationNameInput'); // <-- Penambahan
+    
+
+    let currentTransportMode = 'driving';
+
+    const transportModeDiv = document.createElement('div');
+    transportModeDiv.className = 'transport-modes';
+    transportModeDiv.innerHTML = `
+        <label><input type="radio" name="transportMode" value="driving" checked> Mobil</label>
+        <label><input type="radio" name="transportMode" value="walking"> Jalan Kaki</label>
+        <label><input type="radio" name="transportMode" value="cycling"> Sepeda</label>
+    `;
+
+    const routeInfoEl = document.createElement('div');
+    routeInfoEl.id = 'routeInfo';
+    routeInfoEl.innerHTML = '<h3>Informasi Rute (DRIVING):</h3><p>Pilih minimal 2 lokasi untuk melihat rute.</p>';
+
+    mapFooterControlsEl.appendChild(transportModeDiv);
+    mapFooterControlsEl.appendChild(routeInfoEl);
+
+    const transportModeInputs = document.querySelectorAll('input[name="transportMode"]');
+    transportModeInputs.forEach(input => {
+        input.addEventListener('change', (event) => {
+            currentTransportMode = event.target.value;
+            loadLocations();
+        });
+    });
+
+    const searchLocationInput = document.getElementById('searchLocationInput');
+    const searchLocationButton = document.getElementById('searchLocationButton');
+    let searchMarker = null;
+
+    let markers = new Map();
+    let stompClient = null;
+    let polyline = null;
+    let trafficPolylines = [];
+     let myLocationButton = document.getElementById('myLocationButton'); // <--- TAMBAHKAN BARIS INI
+    let userLocationMarker = null; // <--- TAMBAHKAN BARIS INI untuk marker lokasi pengguna
+
+    let messageTimeout;
+    function showMessage(text, type = 'info', duration = 3000) {
+        messageEl.classList.remove('fade-out');
+        clearTimeout(messageTimeout);
+
+        messageEl.textContent = text;
+        if (type === 'success') {
+            messageEl.style.color = '#27ae60';
+        } else if (type === 'error') {
+            messageEl.style.color = '#e74c3c';
+        } else {
+            messageEl.style.color = '#3498db';
+        }
+
+        if (duration > 0) {
+            messageTimeout = setTimeout(() => {
+                messageEl.classList.add('fade-out');
+                setTimeout(() => {
+                    messageEl.textContent = '';
+                    messageEl.classList.remove('fade-out');
+                }, 500);
+            }, duration);
+        }
+    }
+
+    async function getAddressFromLatLng(lat, lon) {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18`;
+        try {
+            const response = await fetch(nominatimUrl);
+            if (!response.ok) throw new Error(`Nominatim API error: ${response.status} ${response.statusText}`);
+            const data = await response.json();
+            return data.display_name || 'Alamat tidak ditemukan';
+        } catch (error) {
+            console.error('Error in reverse geocoding:', error);
+            return 'Gagal mengambil alamat';
+        }
+    }
+
+    map.on('click', async function(e) {
+      const { lat, lng } = e.latlng;
+      latitudeInput.value = lat.toFixed(6); // Menggunakan latitudeInput
+      longitudeInput.value = lng.toFixed(6); // Menggunakan longitudeInput
+      
+      // Kosongkan nama lokasi setiap kali klik baru
+      locationNameInput.value = ''; 
+      fullAddressInput.value = 'Mencari alamat...'; // Menggunakan fullAddressInput
+
+      // Memberi highlight pada input (opsional, untuk visual feedback)
+      ['latitudeInput', 'longitudeInput'].forEach(id => { 
+        const el = document.getElementById(id);
+        if (el) { // Cek apakah elemen ditemukan
+            el.style.backgroundColor = '#d1ecf1'; // Warna highlight sementara
+            setTimeout(() => el.style.backgroundColor = '', 600); // Hilangkan highlight setelah 0.6 detik
+        }
+      });
+
+      // Lakukan reverse geocoding untuk alamat lengkap
+      const address = await getAddressFromLatLng(lat, lng);
+      fullAddressInput.value = address; // Isi fullAddressInput
+      
+      // Coba isi otomatis nama lokasi jika tersedia dari Nominatim
+      try {
+          const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18`;
+          const response = await fetch(nominatimUrl);
+          const data = await response.json();
+          if (data && data.address) {
+              // Prioritaskan nama tempat yang lebih spesifik
+              locationNameInput.value = data.address.amenity || data.address.building || data.address.shop || data.address.public_building || data.namedetails?.name || (data.display_name ? data.display_name.split(',')[0].trim() : '');
+          } else if (data.display_name) {
+              locationNameInput.value = data.display_name.split(',')[0].trim();
+          }
+      } catch (error) {
+          console.error('Error auto-filling location name from map click:', error);
+      }
+    });
+
+    function addMarkerToCluster(loc) {
+        let selectedIcon;
+        const usernameLower = loc.username.toLowerCase();
+
+        if (usernameLower === 'malik') {
+            selectedIcon = malikIcon;
+        } else if (usernameLower === 'zidan') {
+            selectedIcon = zidanIcon;
+        } else if (usernameLower === 'fauzi') {
+            selectedIcon = fauziIcon;
+        } else if (usernameLower === 'adryan') {
+            selectedIcon = adryanIcon;
+        } else {
+            selectedIcon = defaultIcon;
+        }
+
+        const marker = L.marker([loc.latitude, loc.longitude], { icon: selectedIcon })
+            .bindPopup(`<b>${loc.username}</b><br>Lat: ${loc.latitude}<br>Lon: ${loc.longitude}`);
+        
+        marker.on('mouseover', function () {
+            this.bindTooltip(loc.username, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -41],
+                className: 'username-tooltip'
+            }).openTooltip();
+        });
+
+        marker.on('mouseout', function () {
+            this.closeTooltip();
+        });
+
+        markerClusterGroup.addLayer(marker);
+        return marker;
+    }
+
+// --- Fungsionalitas Tombol "Lokasi Saya" ---
+    if (myLocationButton) { // Pastikan tombol ini ada di HTML
+        myLocationButton.addEventListener('click', function() {
+            if (navigator.geolocation) {
+                showMessage("Mencoba mendapatkan lokasi saat ini...", 'info', 0);
+                navigator.geolocation.getCurrentPosition(
+                    async function(position) { // Tambahkan 'async' di sini
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        showMessage(`Lokasi ditemukan: Latitude ${lat.toFixed(6)}, Longitude ${lon.toFixed(6)}`, 'success');
+
+                        // Pindahkan peta ke lokasi yang ditemukan
+                        map.setView([lat, lon], 16);
+                        
+                        // Hapus marker lokasi pengguna sebelumnya jika ada
+                        if (userLocationMarker) {
+                            map.removeLayer(userLocationMarker);
+                        }
+
+                        // Tambahkan marker di lokasi saat ini
+                        userLocationMarker = L.marker([lat, lon], {icon: defaultIcon}).addTo(map)
+                            .bindPopup("Lokasi Anda Saat Ini").openPopup();
+
+                        // --- BAGIAN PENTING: ISI INPUT FORM "TAMBAH LOKASI" ---
+                        latitudeInput.value = lat.toFixed(6); // Ini yang mengisi Latitude
+                        longitudeInput.value = lon.toFixed(6); // Ini yang mengisi Longitude
+
+                        // Lakukan reverse geocoding untuk mendapatkan alamat lengkap
+                        const address = await getAddressFromLatLng(lat, lon); // Pastikan fungsi ini ada
+                        fullAddressInput.value = address; // Ini yang mengisi Alamat Lengkap
+
+                        // Coba isi otomatis nama lokasi dari reverse geocoding
+                        try {
+                            const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18`;
+                            const response = await fetch(nominatimUrl);
+                            const data = await response.json();
+                            if (data && data.address) {
+                                locationNameInput.value = data.address.amenity || data.address.building || data.address.shop || data.address.public_building || data.namedetails?.name || (data.display_name ? data.display_name.split(',')[0].trim() : '');
+                            } else if (data.display_name) {
+                                locationNameInput.value = data.display_name.split(',')[0].trim();
+                            }
+                        } catch (error) {
+                            console.error('Error auto-filling location name from current location:', error);
+                        }
+                        // --- AKHIR BAGIAN PENTING ---
+
+                    },
+                    function(error) { // Fungsi callback untuk error
+                        // ... (kode penanganan error) ...
+                    },
+                    { // Opsi Geolocation
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                showMessage("Browser Anda tidak mendukung Geolocation API.", 'error');
+                console.error("Geolocation is not supported by this browser.");
+            }
+        });
+    }
+
+    function addLocationToList(loc) {
+      const div = document.createElement('div');
+      div.className = 'location-item';
+      div.setAttribute('data-lat', loc.latitude);
+      div.setAttribute('data-lon', loc.longitude);
+      div.setAttribute('data-id', loc.id);
+      div.style.cursor = 'pointer';
+
+      div.innerHTML = `
+        <div style="flex-grow: 1;">
+            <span style="display: block; font-size: 1.1em; margin-bottom: 5px;"><strong>${loc.username}</strong></span>
+            ${loc.locationName ? `<span style="display: block; font-size: 0.9em; color: #555;">${loc.locationName}</span>` : ''}
+            ${loc.fullAddress ? `<span style="display: block; font-size: 0.8em; color: #777;">${loc.fullAddress}</span>` : ''}
+            <span style="display: block; font-size: 0.75em; color: #999;">Lat: ${loc.latitude.toFixed(4)}, Lon: ${loc.longitude.toFixed(4)}</span>
+        </div>
+        <button class="delete-btn" data-id="${loc.id}">Hapus</button>
+      `;
+      locationsListEl.appendChild(div);
+
+      div.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-btn')) return;
+        const lat = parseFloat(this.getAttribute('data-lat'));
+        const lon = parseFloat(this.getAttribute('data-lon'));
+        const id = this.getAttribute('data-id');
+        map.setView([lat, lon], 16);
+        if (markers.has(id)) {
+          const marker = markers.get(id);
+          if (markerClusterGroup.hasLayer(marker)) {
+              markerClusterGroup.zoomToShowLayer(marker, () => {
+                  marker.openPopup();
+              });
+          } else {
+              marker.openPopup();
+          }
+        }
+      });
+
+      div.querySelector('.delete-btn').addEventListener('click', () => {
+        if (confirm(`Hapus lokasi milik ${loc.username}?`)) {
+          deleteLocation(loc.id);
+        }
+      });
+    }
+
+    async function deleteLocation(id) {
+        try {
+            showMessage('Menghapus lokasi...', 'info', 0);
+
+            const res = await fetch(`http://localhost:8080/api/locations/${id}`, { method: 'DELETE' });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                let errorMessage = `Gagal menghapus lokasi: ${res.status} ${res.statusText}`;
+                if (errorText) {
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage = errorJson.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = `${errorMessage}. Detail: ${errorText}`;
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+
+            showMessage('Lokasi berhasil dihapus.', 'success');
+
+            if (markers.has(id)) {
+                markerClusterGroup.removeLayer(markers.get(id));
+                markers.delete(id);
+            }
+            if (stompClient && stompClient.connected) {
+                stompClient.send('/app/updateLocation', {}, JSON.stringify({id: id, action: 'deleted'}));
+            }
+            loadLocations();
+            
+        } catch (err) {
+            showMessage(`Error: ${err.message}`, 'error');
+            console.error("Error deleting location:", err);
+        }
+    }
+
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        let result = [];
+        if (hours > 0) result.push(`${hours} jam`);
+        if (minutes > 0) result.push(`${minutes} menit`);
+        return result.join(' ') || "< 1 menit";
+    }
+
+    function formatDistance(meters) {
+        return meters < 1000 ? `${meters.toFixed(0)} m` : `${(meters / 1000).toFixed(2)} km`;
+    }
+
+/**
+     * Fungsi untuk mendapatkan rute dari OSRM dan menyimulasikan data lalu lintas.
+     * Simulasi ini diperluas untuk rute Bandung-Jakarta.
+     */
+    async function getRoute(coordinates, mode) {
+      const coordsString = coordinates.map(c => `${c[1]},${c[0]}`).join(';');
+      const osrmUrl = `http://router.project-osrm.org/route/v1/${mode}/${coordsString}?overview=full&geometries=geojson`;
+
+      try {
+        const response = await fetch(osrmUrl);
+        if (!response.ok) throw new Error(`OSRM API error: ${response.status} ${response.statusText}`);
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const routeGeometry = data.routes[0].geometry.coordinates;
+          const routeCoordinates = routeGeometry.map(c => [c[1], c[0]]); // [lat, lon]
+          const distance = data.routes[0].distance;
+          let duration = data.routes[0].duration; // Durasi awal dari OSRM
+
+          let trafficSegments = [];
+          let totalTrafficDelay = 0; 
+
+          // Tingkat kemacetan: high (Merah), moderate (Oranye), low (Hijau)
+          const congestionAreas = [
+
+            // Area Bandung
+            { name: "Cileunyi/GT Cileunyi", latMin: -6.945, latMax: -6.935, lonMin: 107.755, lonMax: 107.770, level: 'high', delayFactor: 1.8 },
+            { name: "Pasteur", latMin: -6.887, latMax: -6.882, lonMin: 107.590, lonMax: 107.600, level: 'high', delayFactor: 1.8 },
+            { name: "Buah Batu (Gerbang Tol)", latMin: -6.955, latMax: -6.950, lonMin: 107.630, lonMax: 107.640, level: 'moderate', delayFactor: 1.2 },
+            { nama: "Gedebage Selatan", latMin: -6.95, latMax: -6.94, lonMin: 107.72, lonMax: 107.73, level: 'high', delayFactor: 1.8 }, 
+            { nama: "Cimincrang", latMin: -6.94, latMax: -6.93, lonMin: 107.70, lonMax: 107.71, level: 'moderate', delayFactor: 1.4 }, 
+            { nama: "Setiabudi (Terminal Ledeng)", latMin: -6.84, latMax: -6.83, lonMin: 107.59, lonMax: 107.60, level: 'high', delayFactor: 1.9 }, 
+            { nama: "Dago (Ir. H. Djuanda)", latMin: -6.88, latMax: -6.87, lonMin: 107.60, lonMax: 107.61, level: 'high', delayFactor: 2.0 }, 
+            { nama: "Kopo (Gerbang Tol)", latMin: -6.97, latMax: -6.96, lonMin: 107.57, lonMax: 107.58, level: 'high', delayFactor: 1.7 }, 
+            { nama: "Buahbatu (Gerbang Tol)", latMin: -6.94, latMax: -6.93, lonMin: 107.63, lonMax: 107.64, level: 'high', delayFactor: 1.6 }, 
+            { nama: "Soekarno-Hatta (Bundaran Cibiru)", latMin: -6.93, latMax: -6.92, lonMin: 107.73, lonMax: 107.74, level: 'high', delayFactor: 1.8 }, 
+            { nama: "Ahmad Yani (Cicadas)", latMin: -6.91, latMax: -6.90, lonMin: 107.64, lonMax: 107.65, level: 'moderate', delayFactor: 1.3 }, 
+            { nama: "Cihampelas (Ciwalk)", latMin: -6.89, latMax: -6.88, lonMin: 107.59, lonMax: 107.60, level: 'high', delayFactor: 1.5 }, 
+            { nama: "Asia Afrika", latMin: -6.92, latMax: -6.91, lonMin: 107.60, lonMax: 107.61, level: 'high', delayFactor: 1.9 }, 
+            { nama: "Dipatiukur (DU)", latMin: -6.89, latMax: -6.88, lonMin: 107.61, lonMax: 107.62, level: 'moderate', delayFactor: 1.2 }, 
+            { nama: "Jalan Jakarta (Antapani)", latMin: -6.90, latMax: -6.89, lonMin: 107.65, lonMax: 107.66, level: 'moderate', delayFactor: 1.1 }, 
+            { nama: "Terusan Kopo (Exit Tol)", latMin: -7.00, latMax: -6.99, lonMin: 107.57, lonMax: 107.58, level: 'high', delayFactor: 1.6 },
+            // Sepanjang Tol Purbaleunyi
+            { name: "Rest Area KM 88 (Arah Jakarta)", latMin: -6.650, latMax: -6.640, lonMin: 107.390, lonMax: 107.400, level: 'moderate', delayFactor: 1.3 },
+            { name: "Gerbang Tol Padalarang", latMin: -6.800, latMax: -6.790, lonMin: 107.490, lonMax: 107.500, level: 'high', delayFactor: 1.5 },
+            { name: "Cipularang KM 100-110", latMin: -6.61, latMax: -6.56, lonMin: 107.29, lonMax: 107.35, level: 'low', delayFactor: 1.1 }, 
+            
+            // Sepanjang Tol Jakarta-Cikampek
+            { name: "Karawang Timur/Barat", latMin: -6.320, latMax: -6.280, lonMin: 107.260, lonMax: 107.300, level: 'moderate', delayFactor: 1.4 },
+            { name: "Cikarang (Kawasan Industri)", latMin: -6.340, latMax: -6.280, lonMin: 107.080, lonMax: 107.150, level: 'high', delayFactor: 1.8 },
+            { name: "Bekasi (Gerbang Tol)", latMin: -6.250, latMax: -6.200, lonMin: 106.960, lonMax: 107.000, level: 'high', delayFactor: 1.7 },
+            
+            // Area Jakarta
+            { name: "Cawang (Arah Semanggi/Gatot Subroto)", latMin: -6.248, latMax: -6.240, lonMin: 106.865, lonMax: 106.880, level: 'high', delayFactor: 2.0 },
+            { name: "Semanggi", latMin: -6.219, latMax: -6.210, lonMin: 106.805, lonMax: 106.820, level: 'high', delayFactor: 2.2 },
+            { name: "Tomang", latMin: -6.185, latMax: -6.175, lonMin: 106.780, lonMax: 106.790, level: 'high', delayFactor: 2.0 },
+            { name: "Bundaran HI", latMin: -6.197, latMax: -6.195, lonMin: 106.820, lonMax: 106.822, level: 'high', delayFactor: 2.5 },
+            { name: "Kebon Jeruk", latMin: -6.198, latMax: -6.190, lonMin: 106.750, lonMax: 106.760, level: 'moderate', delayFactor: 1.5 },
+            { nama: "Jl. Sudirman - Bundaran HI", latMin: -6.20, latMax: -6.19, lonMin: 106.81, lonMax: 106.82, level: 'high', delayFactor: 2.5 },
+            { nama: "Jl. HR Rasuna Said", latMin: -6.22, latMax: -6.21, lonMin: 106.82, lonMax: 106.83, level: 'high', delayFactor: 2.3 },
+            { nama: "Jl. Gatot Subroto (Pancoran)", latMin: -6.24, latMax: -6.23, lonMin: 106.83, lonMax: 106.84, level: 'high', delayFactor: 2.0 },
+            { nama: "Jl. Sisingamangaraja (Blok M)", latMin: -6.24, latMax: -6.23, lonMin: 106.79, lonMax: 106.80, level: 'high', delayFactor: 1.8 },
+            { nama: "Slipi Jaya", latMin: -6.19, latMax: -6.18, lonMin: 106.79, lonMax: 106.80, level: 'high', delayFactor: 1.7 },
+            { nama: "Tomang Raya", latMin: -6.18, latMax: -6.17, lonMin: 106.78, lonMax: 106.79, level: 'high', delayFactor: 1.9 },
+            { nama: "Cawang UKI", latMin: -6.25, latMax: -6.24, lonMin: 106.86, lonMax: 106.87, level: 'high', delayFactor: 2.1 },
+            { nama: "Kalimalang", latMin: -6.23, latMax: -6.22, lonMin: 106.90, lonMax: 106.91, level: 'moderate', delayFactor: 1.4 },
+            { nama: "Fatmawati (Cilandak Town Square)", latMin: -6.29, latMax: -6.28, lonMin: 106.79, lonMax: 106.80, level: 'high', delayFactor: 1.6 },
+            { nama: "Tendean - Mampang Prapatan", latMin: -6.24, latMax: -6.23, lonMin: 106.81, lonMax: 106.82, level: 'high', delayFactor: 1.9 },
+            { nama: "Kebon Jeruk (Pintu Tol)", latMin: -6.17, latMax: -6.16, lonMin: 106.77, lonMax: 106.78, level: 'high', delayFactor: 1.7 },
+            { nama: "Mangga Dua", latMin: -6.13, latMax: -6.12, lonMin: 106.82, lonMax: 106.83, level: 'moderate', delayFactor: 1.5 },
+            { nama: "Tanah Abang (Pasar)", latMin: -6.19, latMax: -6.18, lonMin: 106.80, lonMax: 106.81, level: 'high', delayFactor: 1.8 },
+            { nama: "Jatinegara", latMin: -6.22, latMax: -6.21, lonMin: 106.85, lonMax: 106.86, level: 'moderate', delayFactor: 1.3 },
+            { nama: "Kelapa Gading Boulevard", latMin: -6.16, latMax: -6.15, lonMin: 106.90, lonMax: 106.91, level: 'high', delayFactor: 1.6 },
+
+            // Area Yogyakarta
+            { nama: "Malioboro - Titik Nol Km", latMin: -7.79, latMax: -7.78, lonMin: 110.36, lonMax: 110.37, level: 'high', delayFactor: 2.0 },
+            { nama: "Jl. Solo (Ring Road Utara)", latMin: -7.77, latMax: -7.76, lonMin: 110.40, lonMax: 110.41, level: 'moderate', delayFactor: 1.4 },
+            { nama: "Gejayan (Jl. Affandi)", latMin: -7.77, latMax: -7.76, lonMin: 110.38, lonMax: 110.39, level: 'high', delayFactor: 1.7 },
+            { nama: "Jl. Kaliurang (Ring Road Utara)", latMin: -7.75, latMax: -7.74, lonMin: 110.39, lonMax: 110.40, level: 'moderate', delayFactor: 1.3 },
+            { nama: "Prawirotaman", latMin: -7.81, latMax: -7.80, lonMin: 110.36, lonMax: 110.37, level: 'moderate', delayFactor: 1.2 },
+            { nama: "Jombor (Terminal)", latMin: -7.76, latMax: -7.75, lonMin: 110.35, lonMax: 110.36, level: 'high', delayFactor: 1.6 },
+
+            // Area Semarang
+            { nama: "Jalan Majapahit", latMin: -7.00, latMax: -6.99, lonMin: 110.43, lonMax: 110.44, level: 'high', delayFactor: 1.8 },
+            { nama: "Pudak Payung (Jl. Perintis Kemerdekaan)", latMin: -7.07, latMax: -7.06, lonMin: 110.40, lonMax: 110.41, level: 'moderate', delayFactor: 1.3 },
+            { nama: "Tugu Muda", latMin: -6.98, latMax: -6.97, lonMin: 110.40, lonMax: 110.41, level: 'high', delayFactor: 1.7 },
+            { nama: "Kaligawe (Pintu Tol)", latMin: -6.95, latMax: -6.94, lonMin: 110.44, lonMax: 110.45, level: 'high', delayFactor: 1.9 },
+            { nama: "Jalan Pemuda", latMin: -6.98, latMax: -6.97, lonMin: 110.41, lonMax: 110.42, level: 'moderate', delayFactor: 1.2 },
+
+            // Area Surabaya 
+            { nama: "Bundaran Satelit", latMin: -7.28, latMax: -7.27, lonMin: 112.69, lonMax: 112.70, level: 'high', delayFactor: 1.8 },
+            { nama: "Jl. Ahmad Yani (City of Tomorrow)", latMin: -7.33, latMax: -7.32, lonMin: 112.72, lonMax: 112.73, level: 'high', delayFactor: 2.0 },
+            { nama: "Darmo Trade Center (DTC)", latMin: -7.31, latMax: -7.30, lonMin: 112.73, lonMax: 112.74, level: 'moderate', delayFactor: 1.4 },
+            { nama: "Tanjung Perak (Akses Pelabuhan)", latMin: -7.20, latMax: -7.19, lonMin: 112.73, lonMax: 112.74, level: 'high', delayFactor: 2.1 },
+            { nama: "Kenjeran", latMin: -7.24, latMax: -7.23, lonMin: 112.79, lonMax: 112.80, level: 'moderate', delayFactor: 1.2 },
+
+            // Area Medan
+            { nama: "Gatot Subroto (Pusat Kota)", latMin: 3.58, latMax: 3.59, lonMin: 98.65, lonMax: 98.66, level: 'high', delayFactor: 1.8 },
+            { nama: "Jalan Cemara (Pintu Tol)", latMin: 3.65, latMax: 3.66, lonMin: 98.70, lonMax: 98.71, level: 'high', delayFactor: 1.6 },
+            { nama: "Akses Bandara Kualanamu", latMin: 3.56, latMax: 3.57, lonMin: 98.81, lonMax: 98.82, level: 'moderate', delayFactor: 1.3 },
+            { nama: "Jl. SM Raja", latMin: 3.55, latMax: 3.56, lonMin: 98.68, lonMax: 98.69, level: 'high', delayFactor: 1.7 },
+
+            // Area Palembang
+            { nama: "Jalan Jenderal Sudirman", latMin: -2.98, latMax: -2.97, lonMin: 104.75, lonMax: 104.76, level: 'high', delayFactor: 1.9 },
+            { nama: "Ampera (Jembatan)", latMin: -2.99, latMax: -2.98, lonMin: 104.76, lonMax: 104.77, level: 'high', delayFactor: 2.2 },
+            { nama: "Demang Lebar Daun", latMin: -2.97, latMax: -2.96, lonMin: 104.73, lonMax: 104.74, level: 'moderate', delayFactor: 1.4 },
+
+            // Area Pekanbaru
+            { nama: "Tuanku Tambusai", latMin: 0.50, latMax: 0.51, lonMin: 101.44, lonMax: 101.45, level: 'high', delayFactor: 1.7 },
+            { nama: "Harapan Raya", latMin: 0.49, latMax: 0.50, lonMin: 101.44, lonMax: 101.45, level: 'moderate', delayFactor: 1.2 },
+
+            // Area Lampung (Bandar Lampung)
+            { nama: "Raden Intan", latMin: -5.40, latMax: -5.39, lonMin: 105.26, lonMax: 105.27, level: 'high', delayFactor: 1.8 },
+            { nama: "By Pass Soekarno-Hatta (Simpang)", latMin: -5.36, latMax: -5.35, lonMin: 105.28, lonMax: 105.29, level: 'moderate', delayFactor: 1.3 },
+
+            // Area Makassar
+            { nama: "Perintis Kemerdekaan (Urip Sumoharjo)", latMin: -5.13, latMax: -5.12, lonMin: 119.48, lonMax: 119.49, level: 'high', delayFactor: 2.0 },
+            { nama: "Sultan Alauddin", latMin: -5.16, latMax: -5.15, lonMin: 119.43, lonMax: 119.44, level: 'high', delayFactor: 1.7 },
+            { nama: "Jalan AP Pettarani", latMin: -5.15, latMax: -5.14, lonMin: 119.44, lonMax: 119.45, level: 'high', delayFactor: 1.9 },
+            { nama: "Akses Tol Reformasi", latMin: -5.12, latMax: -5.11, lonMin: 119.44, lonMax: 119.45, level: 'moderate', delayFactor: 1.5 },
+
+            // Area Manado
+            { nama: "Sam Ratulangi (Pusat Kota)", latMin: 1.47, latMax: 1.48, lonMin: 124.83, lonMax: 124.84, level: 'high', delayFactor: 1.6 },
+            { nama: "Ring Road (Akses Bandara)", latMin: 1.45, latMax: 1.46, lonMin: 124.87, lonMax: 124.88, level: 'moderate', delayFactor: 1.1 },
+
+            // Area Denpasar 
+            { nama: "Gatot Subroto Timur", latMin: -8.64, latMax: -8.63, lonMin: 115.22, lonMax: 115.23, level: 'high', delayFactor: 1.7 },
+            { nama: "Imam Bonjol", latMin: -8.69, latMax: -8.68, lonMin: 115.17, lonMax: 115.18, level: 'high', delayFactor: 1.8 },
+            { nama: "Ubung (Terminal)", latMin: -8.64, latMax: -8.63, lonMin: 115.17, lonMax: 115.18, level: 'moderate', delayFactor: 1.3 },
+
+            // Area Samarinda
+            { nama: "Jl. Gatot Subroto", latMin: -0.49, latMax: -0.48, lonMin: 117.15, lonMax: 117.16, level: 'high', delayFactor: 1.6 },
+            { nama: "Jl. APT Pranoto (Akses Jembatan)", latMin: -0.53, latMax: -0.52, lonMin: 117.16, lonMax: 117.17, level: 'moderate', delayFactor: 1.2 },
+
+            // Area Balikpapan
+            { nama: "MT Haryono (Ring Road)", latMin: -1.22, latMax: -1.21, lonMin: 116.89, lonMax: 116.90, level: 'high', delayFactor: 1.7 },
+            { nama: "Sudirman (Pasar Klandasan)", latMin: -1.26, latMax: -1.25, lonMin: 116.83, lonMax: 116.84, level: 'moderate', delayFactor: 1.4 }
+
+
+          ];
+
+          // Dapatkan waktu saat ini untuk simulasi jam sibuk/normal
+          const now = new Date();
+          const hour = now.getHours();
+          const day = now.getDay(); // 0 = Minggu, 1 = Senin, ..., 6 = Sabtu
+          
+          // Faktor penundaan ekstra untuk jam sibuk (misal: 07:00-09:00 dan 16:00-19:00)
+          // dan akhir pekan (Sabtu/Minggu)
+          let overallDelayFactor = 1.0;
+          if ((hour >= 7 && hour < 9) || (hour >= 16 && hour < 19)) { // Jam sibuk pagi/sore
+              overallDelayFactor *= 1.3; 
+          }
+          if (day === 0 || day === 6) { // Akhir pekan
+              overallDelayFactor *= 1.2;
+          }
+
+
+          for (let i = 0; i < routeCoordinates.length - 1; i++) {
+              const startCoord = routeCoordinates[i];
+              const endCoord = routeCoordinates[i + 1];
+              let congestionLevel = 'low'; 
+              let segmentDelay = 0; 
+
+              const midLat = (startCoord[0] + endCoord[0]) / 2;
+              const midLon = (startCoord[1] + endCoord[1]) / 2;
+
+              for (const area of congestionAreas) {
+                  if (midLat >= area.latMin && midLat <= area.latMax &&
+                      midLon >= area.lonMin && midLon <= area.lonMax) {
+                      congestionLevel = area.level;
+                      const segmentDistance = L.latLng(startCoord).distanceTo(L.latLng(endCoord)); 
+                      const baseTime = segmentDistance / 10; // Asumsi kecepatan dasar 10 m/s (36 km/jam)
+                      segmentDelay = baseTime * (area.delayFactor - 1);
+                      break; 
+                  }
+              }
+              // Terapkan faktor penundaan keseluruhan
+              segmentDelay *= overallDelayFactor;
+              totalTrafficDelay += segmentDelay;
+
+              trafficSegments.push({
+                  coords: [startCoord, endCoord],
+                  congestionLevel: congestionLevel,
+                  segmentDelay: segmentDelay 
+              });
+          }
+          duration += totalTrafficDelay; 
+
+          return {
+              coordinates: routeCoordinates, 
+              distance: distance,
+              duration: duration, 
+              trafficSegments: trafficSegments 
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error("Error fetching route from OSRM or simulating traffic:", error);
+        showMessage(`Gagal mendapatkan rute atau informasi lalu lintas: ${error.message}`, 'error');
+        return null;
+      }
+    }
+
+    async function loadLocations() {
+      try {
+        const res = await fetch('http://localhost:8080/api/locations');
+        if (!res.ok) throw new Error(`Gagal memuat lokasi: ${res.status} ${res.statusText}`);
+        const data = await res.json();
+
+        markerClusterGroup.clearLayers(); 
+        markers.clear();
+        locationsListEl.innerHTML = '';
+        
+        trafficPolylines.forEach(p => map.removeLayer(p));
+        trafficPolylines = [];
+        if (polyline) {
+          map.removeLayer(polyline);
+          polyline = null;
+        }
+
+        const latlngsForOsrm = [];
+        data.forEach(loc => {
+          const marker = addMarkerToCluster(loc); 
+          markers.set(loc.id, marker); 
+          addLocationToList(loc);
+          latlngsForOsrm.push([loc.latitude, loc.longitude]);
+        });
+
+        if (latlngsForOsrm.length >= 2) {
+          const routeData = await getRoute(latlngsForOsrm, currentTransportMode);
+          if (routeData && routeData.coordinates) {
+            if (routeData.trafficSegments && routeData.trafficSegments.length > 0) {
+                routeData.trafficSegments.forEach(segment => {
+                    let color;
+                    let weight = 6;
+                    switch (segment.congestionLevel) {
+                        case 'low':
+                            color = '#27ae60'; /* Hijau */
+                            break;
+                        case 'moderate':
+                            color = '#f39c12'; /* Oranye */
+                            break;
+                        case 'high':
+                            color = '#e74c3c'; /* Merah */
+                            weight = 7; /* Sedikit lebih tebal untuk macet */
+                            break;
+                        default:
+                            color = '#3872E7'; /* Biru default */
+                    }
+                    const trafficPolylineSegment = L.polyline(segment.coords, { color: color, weight: weight, opacity: 0.9 }).addTo(map);
+                    trafficPolylines.push(trafficPolylineSegment); 
+                });
+                // Pastikan map fit bounds mencakup semua polyline lalu lintas
+                const allRouteCoords = trafficPolylines.flatMap(p => p.getLatLngs());
+                if (allRouteCoords.length > 0) {
+                    map.fitBounds(L.latLngBounds(allRouteCoords), { padding: [50, 50] });
+                }
+
+            } else {
+                polyline = L.polyline(routeData.coordinates, { color: '#3872E7', weight: 5, opacity: 0.9 }).addTo(map);
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+            }
+            
+            routeInfoEl.innerHTML = `
+              <h3>Informasi Rute (${currentTransportMode.toUpperCase()}):</h3>
+              <p>Jarak Total: <strong>${formatDistance(routeData.distance)}</strong></p>
+              <p>Estimasi Waktu: <strong>${formatDuration(routeData.duration)}</strong></p>
+              <p>Warna rute: <span style="color:#27ae60;font-weight:bold;">Hijau (Lancar)</span>, <span style="color:#f39c12;font-weight:bold;">Oranye (Sedang)</span>, <span style="color:#e74c3c;font-weight:bold;">Merah (Macet)</span></p>
+            `;
+          } else {
+             routeInfoEl.innerHTML = `<h3>Informasi Rute:</h3><p>Gagal mendapatkan informasi rute.</p>`;
+          }
+        } else {
+          map.setView([-6.5, 107.5], 9); 
+          routeInfoEl.innerHTML = `<h3>Informasi Rute (${currentTransportMode.toUpperCase()}):</h3><p>Pilih minimal 2 lokasi untuk melihat rute.</p>`;
+        }
+      } catch (err) {
+        showMessage(`Error memuat lokasi: ${err.message}`, 'error');
+        console.error("Error loading locations:", err);
+      }
+    }
+
+function searchLocation() {
+        const query = searchLocationInput.value.trim();
+        if (!query) { showMessage('Mohon masukkan nama lokasi untuk dicari.', 'error'); return; }
+        showMessage('Mencari lokasi...', 'info', 0);
+
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, Indonesia&format=json&limit=1`;
+        fetch(nominatimUrl)
+            .then(response => {
+                if (!response.ok) throw new Error(`Nominatim API error: ${response.status} ${response.statusText}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.length > 0) {
+                    const { lat, lon, display_name } = data[0];
+                    if (searchMarker) map.removeLayer(searchMarker);
+                    searchMarker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${display_name}</b>`).openPopup();
+                    map.setView([lat, lon], 16);
+                    document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
+                    document.getElementById('longitude').value = parseFloat(lon).toFixed(6);
+                    
+                    // <--- PERUBAHAN DI SINI
+                    clickedAddressEl.textContent = `Alamat: ${display_name}`; // Ini fullAddressDisplay
+                    
+                    // Isi otomatis Nama Lokasi berdasarkan hasil pencarian
+                    // Coba ekstrak bagian pertama dari display_name sebagai nama lokasi
+                    const parts = display_name.split(',');
+                    locationNameInput.value = parts[0].trim();
+                    // AKHIR PERUBAHAN
+                    
+                    showMessage(`Lokasi ditemukan: ${display_name}`, 'success');
+                } else {
+                    showMessage('Lokasi tidak ditemukan.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error searching location:', error);
+                showMessage(`Terjadi kesalahan saat mencari lokasi: ${error.message}`, 'error');
+            });
+    }
+
+    searchLocationButton.addEventListener('click', searchLocation);
+    searchLocationInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchLocation(); });
+
+function connect() {
+    // Pastikan URL ini sama persis dengan yang di WebSocketConfig.java
+    const socket = new SockJS('http://localhost:8080/gs-guide-websocket'); 
+    stompClient = Stomp.over(socket);
+    stompClient.connect({}, function (frame) {
+        setConnected(true);
+        console.log('Connected: ' + frame);
+        stompClient.subscribe('/topic/locations', function (location) {
+            // showGreeting(JSON.parse(greeting.body).content);
+            console.log('Received location update: ', JSON.parse(location.body));
+            loadLocations(); // Muat ulang daftar lokasi saat ada update
+        });
+    }, function (error) { // Error callback untuk koneksi WebSocket
+        console.error("WebSocket connection failed: ", error);
+        showMessage("Koneksi WebSocket gagal. Pastikan backend berjalan. Mencoba ulang dalam 5 detik...", 'error');
+        setTimeout(connect, 5000); // Coba lagi setelah 5 detik
+    });
+}
+
+    // Initial load and WebSocket connection
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLocations();
+        connectWebSocket();
+    });
+
+   // Event listener for form submission (add location)
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const latitude = parseFloat(document.getElementById('latitude').value);
+        const longitude = parseFloat(document.getElementById('longitude').value);
+        
+        // <--- PERUBAHAN PENTING DI SINI: Ambil nilai locationName dan fullAddress
+        const locationName = locationNameInput.value.trim(); // Diambil dari input baru
+        const fullAddress = clickedAddressEl.textContent.replace('Alamat: ', '').trim(); // Diambil dari span alamat
+        // AKHIR PERUBAHAN
+
+        // Validasi yang lebih lengkap, termasuk alamat
+        if (!username || isNaN(latitude) || isNaN(longitude) || !fullAddress) {
+            showMessage('Semua field (Username, Latitude, Longitude, Alamat Lengkap) harus diisi.', 'error');
+            return;
+        }
+
+        // <--- PERUBAHAN PENTING DI SINI: Sertakan locationName dan fullAddress dalam payload
+        const locationData = {
+            username: username,
+            latitude: latitude,
+            longitude: longitude,
+            locationName: locationName, // Tambahkan ini
+            fullAddress: fullAddress   // Tambahkan ini
+        };
+        // AKHIR PERUBAHAN
+
+        showMessage('Menambahkan lokasi...', 'info', 0); // Tampilkan pesan proses tanpa durasi
+
+        try {
+            const res = await fetch('http://localhost:8080/api/locations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(locationData), // Kirim objek locationData lengkap
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                let errorMessage = `Gagal menambahkan lokasi: ${res.status} ${res.statusText}`;
+                if (errorText) {
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        // Spring Boot dengan @Valid akan mengembalikan struktur error spesifik
+                        if (errorJson.errors && errorJson.errors.length > 0) {
+                            errorMessage = errorJson.errors.map(err => err.defaultMessage).join(', ');
+                        } else {
+                            errorMessage = errorJson.message || errorMessage;
+                        }
+                    } catch (e) {
+                        errorMessage = `${errorMessage}. Detail: ${errorText}`;
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+
+            const newLocation = await res.json();
+            showMessage('Lokasi berhasil ditambahkan.', 'success');
+            
+            // Clear form
+            form.reset();
+            clickedAddressEl.textContent = ''; // Clear address display
+            locationNameInput.value = ''; // Clear location name input
+            
+            // <--- PERUBAHAN PENTING DI SINI: Kirim objek newLocation lengkap via WebSocket
+            if (stompClient && stompClient.connected) {
+                stompClient.send('/app/updateLocation', {}, JSON.stringify(newLocation)); // Kirim objek lengkap
+            }
+            // AKHIR PERUBAHAN
+
+            loadLocations(); // Panggil ini untuk update daftar dan rute secara lokal segera
+            
+        } catch (err) {
+            showMessage(`Error: ${err.message}`, 'error');
+            console.error("Error adding location:", err);
+        }
+    });
+
+  </script>
+</body>
+</html>
